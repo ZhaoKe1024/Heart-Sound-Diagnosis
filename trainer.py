@@ -4,8 +4,9 @@
 # @Author: ZhaoKe
 # @File : HeartSound-Diagnosis.py
 # @Software: PyCharm
+import os.path
 import sys
-sys.path.append(r"C:/Program Files (zk)/PythonFiles/AClassification/Heart-Sound-Diagnosis/")
+import time
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -15,6 +16,8 @@ import sklearn.metrics as metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
+
+sys.path.append(r"C:/Program Files (zk)/PythonFiles/AClassification/Heart-Sound-Diagnosis/")
 from models.mobilenetv2 import MobileNetV2
 from readers import get_loaders
 
@@ -24,8 +27,11 @@ def train():
     cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
     train_loader, test_loader = get_loaders()
     class_loss = nn.CrossEntropyLoss().to(device)
-    optimizer = optim.Adam(cl_model.parameters(), lr=0.0001)
-    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10)
+    optimizer = optim.Adam(cl_model.parameters(), lr=5e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=5e-5)
+    datetimestr = time.strftime("%Y%m%d%H%M", time.localtime())
+    run_save_dir = "./ckpt/" + datetimestr + f'_/'
+
     old = 0
     STD_acc = []
     STD_loss = []
@@ -68,15 +74,17 @@ def train():
                 loss_list.append(loss_eval.item())
             acc_per = np.array(acc_list).mean()
             # print("new acc:", acc_per)
-            # STD_acc.append(acc_per)
+            STD_acc.append(acc_per)
             STD_loss.append(np.array(loss_list).mean())
             if acc_per > old:
                 old = acc_per
                 print("new acc:", acc_per)
-                if acc_per > 0.80:
+                if acc_per > 0.75:
                     print(f"Epoch[{epoch_id}]: {acc_per}")
-                    torch.save(cl_model.state_dict(), f"./ckpt/cls_model_{epoch_id}.pt")
-                    torch.save(optimizer.state_dict(), f"./ckpt/optimizer_{epoch_id}.pt")
+                    if not os.path.exists(run_save_dir):
+                        os.makedirs(run_save_dir, exist_ok=True)
+                    torch.save(cl_model.state_dict(), run_save_dir+f"cls_model_{epoch_id}.pt")
+                    torch.save(optimizer.state_dict(), run_save_dir+f"optimizer_{epoch_id}.pt")
         scheduler.step()
     plt.figure(0)
     plt.plot(range(len(loss_line)), loss_line, c="red", label="train_loss")
@@ -85,8 +93,8 @@ def train():
     plt.xlabel("iteration")
     plt.ylabel("metrics")
     plt.legend()
+    plt.savefig(run_save_dir+"train_result.png", format="png", dpi=300)
     plt.show()
-    plt.savefig("./train_result.png", format="png", dpi=300)
 
 
 def heatmap_eval():

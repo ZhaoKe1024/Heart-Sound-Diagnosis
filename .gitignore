@@ -1,0 +1,8 @@
+/datasets/
+*.m4a
+/__pycache__/
+/ckpt/
+*.pyc
+*.pt
+/.ipynb_checkpoints/
+*.zip
