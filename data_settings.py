@@ -13,9 +13,9 @@ def dataset_circor():
     dataset_dict["ROOT_PATH"] = ROOT_PATH
     dataset_dict["metadata"] = metadata
     postfix = "_New_3주기"
-    class_names = ["AV", "MV", "PV", "TV"]
+    class_names = ["AV", "MV", "PV", "TV", "Phc"]
     dataset_dict["class_names"] = class_names
-    dataset_dict["class_label"] = {"AV": 1, "MV": 2, "PV": 3, "TV": 4}
+    dataset_dict["class_label"] = {"AV": 1, "MV": 2, "PV": 3, "TV": 4, "Phc": 5}
     dataset_dict["data_dirs"] = [ROOT_PATH + item + postfix + '/' for item in class_names]
     return dataset_dict
 
