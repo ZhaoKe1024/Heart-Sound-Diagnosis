@@ -3,6 +3,7 @@
 # @Time : 2024-06-05 21:35
 import os
 
+import matplotlib.pyplot as plt
 import torch
 from tqdm import tqdm
 import librosa
@@ -199,23 +200,37 @@ def read_wav():
 def read_wav_9s():
     data_root = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9s/"
     w2m = Wave2Mel(sr=22050)
+    label_list = []
+    pos_cnt, neg_cnt = 0, 0
     with open("./datasets/wavdatalist_circor_9s.txt", 'r') as fout:
         lines = fout.readlines()
         for j, line in tqdm(enumerate(lines), desc="Reading"):
             parts = line.split(',')
             # print(data_root + parts[0])
-
-            y, sr = librosa.load(path=data_root + parts[0])
-
-            logmel = w2m(torch.from_numpy(y))
-            print(sr, logmel.shape)
-            if j == 10:
-                break
+            if int(parts[1]):
+                pos_cnt += 1
+            else:
+                neg_cnt += 1
+            # label_list.append(parts[1])
+            # y, sr = librosa.load(path=data_root + parts[0])
+            #
+            # logmel = w2m(torch.from_numpy(y[:147000]))
+            # print(sr, logmel.shape)
+            # if j == 10:
+            #     break
+    print(pos_cnt, neg_cnt)
+    # print(np.array(label_list).sum())
+    # print(np.array(label_list))
 
 
 if __name__ == '__main__':
     # read_data()
-    # data_root = "D:/DATAS/Medical/circor/"
-    # data_dir = "training_data/"
-    # print(read_hea(data_root + data_dir + "9979_AV.hea"))
-    read_wav_9s()
+
+    data_path = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9s/9983_MV_01.wav"
+    y, sr = librosa.load(data_path)
+    w2m = Wave2Mel(sr=22050)
+    mel = w2m(torch.from_numpy(y))
+    plt.figure(0)
+    plt.imshow(mel)
+    plt.show()
+    # read_wav_9s()
