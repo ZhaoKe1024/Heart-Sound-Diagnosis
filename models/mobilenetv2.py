@@ -124,7 +124,9 @@ class MobileNetV2(nn.Module):
         return out[:, :, -1]
         """
         # print("shape of feature:", x.shape)
-        pred = self.classifier(latent.mean(3).mean(2))
+        # pred = self.classifier(latent.mean(3).mean(2))
+        # print(latent.max(3)["values"])
+        pred = self.classifier(latent.max(3)[0].max(2)[0])
         return pred, latent
 
     def _initialize_weights(self):

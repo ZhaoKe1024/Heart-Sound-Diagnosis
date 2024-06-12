@@ -6,9 +6,10 @@
 # @Software: PyCharm
 import os
 from tqdm import tqdm
-import librosa
+from torchvision import transforms
+from datautils.transforms import *
 from torch.utils.data import Dataset, DataLoader
-from audioprocess import Wave2Mel, read_wav_mel
+from datautils.audioprocess import Wave2Mel, read_wav_mel
 from data_settings import dataset_1k
 
 
@@ -43,11 +44,14 @@ def get_wave_label_list(iseval):
 
 
 class HeartDataset(Dataset):
-    def __init__(self, datas, labels):
+    def __init__(self, datas, labels, transform=None):
         self.datas = datas
         self.labels = labels
+        self.trans = transform
 
     def __getitem__(self, ind):
+        if self.trans is not None:
+            return self.trans(self.datas[ind].data.cpu().numpy()), self.labels[ind]
         return self.datas[ind], self.labels[ind]
 
     def __len__(self):
@@ -57,15 +61,24 @@ class HeartDataset(Dataset):
 def get_loaders(eval=False, bs=16):
     tdatas, tlabels, vdatas, vlabels = get_wave_label_list(iseval=eval)
     print(vdatas[0].shape)
+
+    # train_transforms = transforms.Compose([MyRightShift(input_size=(128, 87),
+    #                                                     width_shift_range=7,
+    #                                                     shift_probability=0.9),
+    #                                        # MyAddGaussNoise(input_size=(128, 87),
+    #                                        #                 add_noise_probability=0.55),
+    #                                        MyReshape(output_size=(1, 128, 87))])
+    # test_transforms = transforms.Compose([MyReshape(output_size=(1, 128, 87))])
+
     if eval:
         valid_dataset = HeartDataset(datas=vdatas,
-                                     labels=vlabels)
+                                     labels=vlabels)#, transform=test_transforms)
         return DataLoader(dataset=valid_dataset, batch_size=bs, shuffle=False)
     else:
         train_dataset = HeartDataset(datas=tdatas,
-                                     labels=tlabels)
+                                     labels=tlabels)#, transform=train_transforms)
         valid_dataset = HeartDataset(datas=vdatas,
-                                     labels=vlabels)
+                                     labels=vlabels)#, transform=test_transforms)
         return (DataLoader(dataset=train_dataset, batch_size=bs, shuffle=True),
                 DataLoader(dataset=valid_dataset, batch_size=bs, shuffle=False))
 
@@ -73,4 +86,4 @@ def get_loaders(eval=False, bs=16):
 if __name__ == '__main__':
     # get_wave_label_list()
     # show_data_demo()
-    # get_loaders()
+    get_loaders()
