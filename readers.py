@@ -6,8 +6,6 @@
 # @Software: PyCharm
 import os
 from tqdm import tqdm
-from torchvision import transforms
-from datautils.transforms import *
 from torch.utils.data import Dataset, DataLoader
 from datautils.audioprocess import Wave2Mel, read_wav_mel
 from data_settings import dataset_1k

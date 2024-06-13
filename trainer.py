@@ -65,8 +65,8 @@ def train():
                 # X_mel = X_mel.unsqueeze(1)
                 X_mel = X_mel.transpose(1, 2)
             y_mel = y_mel.to(device)
-            # print(X_mel.shape)
-            # return
+            print(X_mel.shape)
+            return
             pred, _ = cl_model(X_mel)
             # if idx == 0:
             #     # torch.Size([32, 1, 87, 128]) torch.Size([32]) torch.Size([32, 5])
@@ -143,9 +143,9 @@ def heatmap_eval():
     with torch.no_grad():
         for jdx, (x_img, y_label) in enumerate(test_loader):
             X_mel = x_img.to(device)
-            if X_mel.ndim == 3:
+            # if X_mel.ndim == 3:
                 # X_mel = X_mel.unsqueeze(1)
-                X_mel = X_mel.transpose(1, 2)
+                # X_mel = X_mel.transpose(1, 2)
             y_mel = y_label.to(device)
             print(X_mel.shape)
             pred, _ = cl_model(X_mel)
@@ -182,5 +182,5 @@ def heatmap_eval():
 
 
 if __name__ == '__main__':
-    # train()
-    heatmap_eval()
+    train()
+    # heatmap_eval()

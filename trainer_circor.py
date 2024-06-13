@@ -21,6 +21,7 @@ import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 sys.path.append(r"C:/Program Files (zk)/PythonFiles/AClassification/Heart-Sound-Diagnosis/")
 from models.mobilefacenet import MobileFaceNet
+from models.classifiers import LSTM_Attn_Classifier
 from datautils.audioprocess import Wave2Mel
 
 
@@ -39,7 +40,11 @@ class HeartDataset(Dataset):
 
 def get_loaders(eval=False, bs=16):
     data_root = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9s/"
-    w2m = Wave2Mel(sr=22050)
+    mel_root = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9smel/"
+    os.makedirs(mel_root, exist_ok=True)
+    sr = 22050
+    mel_size = (56, 224)
+    w2m = Wave2Mel(sr=sr)
     vdatas, vlabels = [], []
     tdatas, tlabels = [], []
     vpos, vneg = 0, 0
@@ -51,6 +56,16 @@ def get_loaders(eval=False, bs=16):
             if (vneg < 200 and lb == 0) or (vpos < 200 and lb == 1):
                 y, sr = librosa.load(path=data_root + parts[0])
                 logmel = w2m(torch.from_numpy(y[:147000]))
+                logmel = logmel[:mel_size[0], 64:]
+                # print(y.shape, logmel.shape)
+                # new_im = Image.fromarray(logmel.data.numpy().astype(np.uint8))
+                # plt.figure(j)
+                # plt.imshow(new_im)
+                # plt.xticks([])
+                # plt.yticks([])
+                # plt.savefig(mel_root+parts[0][:-4]+".png", dpi=300, format="png")
+                # plt.close(j)
+
                 vdatas.append(logmel)
                 vlabels.append(lb)
                 if lb == 0:
@@ -60,11 +75,12 @@ def get_loaders(eval=False, bs=16):
             else:
                 y, sr = librosa.load(path=data_root + parts[0])
                 logmel = w2m(torch.from_numpy(y[:147000]))
-                tdatas.append(logmel)
+                tdatas.append(logmel[:mel_size[0], 64:])
                 tlabels.append(int(parts[1]))
-            # if j==1000:
-            #     break
-
+            if j==1000:
+                break
+    print(len(tdatas), len(tlabels))
+    print(len(vdatas), len(vlabels))
     if eval:
         valid_dataset = HeartDataset(datas=vdatas,
                                      labels=vlabels)
@@ -82,15 +98,16 @@ def train():
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     # cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
     # x = torch.randn(16, 1, 64, 128)  # (bs, length, dim)
-    # cl_model = LSTM_Classifier(inp_size=87, hidden_size=128, n_classes=5).to(device)
-    cl_model = MobileFaceNet(inp_c=1, input_dim=128, num_class=2, inp=1).to(device)
-    train_loader, test_loader = get_loaders(eval=False, bs=64)
+    input_size = (56, 224)
+    # cl_model = LSTM_Attn_Classifier(inp_size=input_size[0], hidden_size=128, n_classes=2, return_attn_weights=True, attn_type="dot").to(device)
+    cl_model = MobileFaceNet(inp_c=1, input_dim=input_size[0], latent_size=(14, 4), num_class=2, inp=1).to(device)
+    train_loader, test_loader = get_loaders(eval=False, bs=32)
     class_loss = nn.CrossEntropyLoss().to(device)
-    iter_max = 1000
-    warm_up_iter, T_max, lr_max, lr_min = 30, iter_max // 3, 5e-3, 5e-4
+    iter_max = 100
+    warm_up_iter, T_max, lr_max, lr_min = 10, iter_max // 2.5, 5e-3, 5e-4
     # reference: https://blog.csdn.net/qq_36560894/article/details/114004799
     # 为param_groups[0] (即model.layer2) 设置学习率调整规则 - Warm up + Cosine Anneal
-    lambda0 = lambda cur_iter: 0.005 * cur_iter / warm_up_iter if cur_iter < warm_up_iter else \
+    lambda0 = lambda cur_iter: lr_max * cur_iter / warm_up_iter if cur_iter < warm_up_iter else \
         (lr_min + 0.5 * (lr_max - lr_min) * (
                 1.0 + math.cos((cur_iter - warm_up_iter) / (T_max - warm_up_iter) * math.pi))) / 0.1
     optimizer = optim.Adam(cl_model.parameters(), lr=lr_max)
@@ -116,12 +133,15 @@ def train():
             optimizer.zero_grad()
             X_mel = X_mel.to(device)
             if X_mel.ndim == 3:
+                X_mel = X_mel.transpose(1, 2)
                 X_mel = X_mel.unsqueeze(1)
-                # X_mel = X_mel.transpose(1, 2)
             y_mel = y_mel.to(device)
-            # print(X_mel.shape)
+            if epoch_id < 2 and idx < 2:
+                print(X_mel.shape, y_mel.shape)
             # return
             pred, _ = cl_model(x=X_mel, label=y_mel)
+            # print(pred.shape)
+            # return
             # if idx == 0:
             #     # torch.Size([32, 1, 87, 128]) torch.Size([32]) torch.Size([32, 5])
             #     print(X_mel.shape, y_mel.shape, pred.shape)
@@ -137,8 +157,8 @@ def train():
             for idx, (X_mel, y_mel) in enumerate(test_loader):
                 X_mel = X_mel.to(device)
                 if X_mel.ndim == 3:
+                    X_mel = X_mel.transpose(1, 2)
                     X_mel = X_mel.unsqueeze(1)
-                    # X_mel = X_mel.transpose(1, 2)
                 y_mel = y_mel.to(device)
                 # print(X_mel.shape)
                 pred, _ = cl_model(x=X_mel, label=y_mel)
@@ -236,5 +256,6 @@ def heatmap_eval():
 
 
 if __name__ == '__main__':
+    # get_loaders()
     train()
     # heatmap_eval()

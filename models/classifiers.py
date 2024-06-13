@@ -5,7 +5,7 @@
 # @File : classifiers.py
 # @Software: PyCharm
 import torch.nn as nn
-from ackit.modules.attentions import *
+from models.attentions import *
 
 
 class Classifier(nn.Module):
@@ -45,7 +45,7 @@ class LSTM_Attn_Classifier(nn.Module):
     def __init__(self, inp_size, hidden_size, n_classes, return_attn_weights=False, attn_type='dot'):
         super(LSTM_Attn_Classifier, self).__init__()
         self.return_attn_weights = return_attn_weights
-        self.lstm = nn.LSTM(inp_size, hidden_size, batch_first=True)
+        self.lstm = nn.LSTM(input_size=inp_size, hidden_size=hidden_size, batch_first=True)
         self.attn_type = attn_type
 
         if self.attn_type == 'dot':
@@ -56,8 +56,9 @@ class LSTM_Attn_Classifier(nn.Module):
         self.classifier = nn.Linear(hidden_size, n_classes)
 
     def forward(self, x):
-        x = x.squeeze()
-        lstm_out, (hidden, _) = self.lstm(x.transpose(1, 2))
+        # x = x.squeeze()
+        # print(x.shape)
+        lstm_out, (hidden, _) = self.lstm(x)
 
         if self.attn_type == 'dot':
             attn_output = self.attention(lstm_out, hidden)

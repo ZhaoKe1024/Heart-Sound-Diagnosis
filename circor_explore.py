@@ -211,26 +211,27 @@ def read_wav_9s():
                 pos_cnt += 1
             else:
                 neg_cnt += 1
-            # label_list.append(parts[1])
-            # y, sr = librosa.load(path=data_root + parts[0])
-            #
+            label_list.append(parts[1])
+            y, sr = librosa.load(path=data_root + parts[0])
+            print(y.shape)
             # logmel = w2m(torch.from_numpy(y[:147000]))
             # print(sr, logmel.shape)
-            # if j == 10:
-            #     break
+            if j == 20:
+                break
     print(pos_cnt, neg_cnt)
     # print(np.array(label_list).sum())
     # print(np.array(label_list))
 
 
 if __name__ == '__main__':
-    # read_data()
-
-    data_path = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9s/9983_MV_01.wav"
-    y, sr = librosa.load(data_path)
-    w2m = Wave2Mel(sr=22050)
-    mel = w2m(torch.from_numpy(y))
-    plt.figure(0)
-    plt.imshow(mel)
-    plt.show()
-    # read_wav_9s()
+    # # read_data()
+    #
+    # data_path = "F:/DATAS/heartsounds/the-circor-digiscope-phonocardiogram-dataset-1.0.3/training_data_9s/9983_MV_01.wav"
+    # y, sr = librosa.load(data_path)
+    # print(y.shape)
+    # w2m = Wave2Mel(sr=22050)
+    # mel = w2m(torch.from_numpy(y))
+    # plt.figure(0)
+    # plt.imshow(mel)
+    # plt.show()
+    read_wav_9s()

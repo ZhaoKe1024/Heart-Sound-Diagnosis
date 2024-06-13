@@ -66,7 +66,7 @@ class Bottleneck(nn.Module):
 
 
 class MobileFaceNet(nn.Module):
-    def __init__(self, inp_c=2, input_dim=128, bottleneck_setting=Mobilefacenet_bottleneck_setting, num_class=6, inp=1):
+    def __init__(self, inp_c=2, input_dim=128, latent_size=(14, 4), bottleneck_setting=Mobilefacenet_bottleneck_setting, num_class=6, inp=1):
         super(MobileFaceNet, self).__init__()
 
         self.conv1 = ConvBlock(inp_c, 64, 3, 2, 1)
@@ -79,11 +79,11 @@ class MobileFaceNet(nn.Module):
 
         self.conv2 = ConvBlock(bottleneck_setting[-1][1], 512, 1, 1, 0)
         # 20(10), 4(2), 8(4)
-        self.linear7 = ConvBlock(512, 512, (8, 18), 1, 0, dw=True, linear=True)
-        # self.linear7 = ConvBlock(512, 512, (4, 10), 1, 0, dw=True, linear=True)
+        # self.linear7 = ConvBlock(512, 512, (8, 18), 1, 0, dw=True, linear=True)
+        self.linear7 = ConvBlock(512, 512, latent_size, 1, 0, dw=True, linear=True)
         self.linear1 = ConvBlock(512, 128, 1, 1, 0, linear=True)
 
-        self.fc_out = nn.Linear(128, 256)
+        self.fc_out = nn.Linear(128, input_dim*2)
         self.cls = ArcMarginProduct(in_features=input_dim*2, out_features=num_class)
         # init
         for m in self.modules():
@@ -119,5 +119,6 @@ class MobileFaceNet(nn.Module):
         # print("shape of convblock output:", x.shape)
         feature = x.view(x.size(0), -1)
         out = self.fc_out(feature)
+        # print(out.shape, label.shape)
         out = self.cls(out, label)
         return out, feature
