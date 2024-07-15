@@ -1,35 +1,39 @@
 #!/user/zhao/miniconda3/envs/torch-0
 # -*- coding: utf_8 -*-
-# @Time : 2024/6/6 14:44
+# @Time : 2024/7/15 14:32
 # @Author: ZhaoKe
-# @File : HeartSound-Diagnosis.py
+# @File : classifiers.py
 # @Software: PyCharm
-import os.path
 import sys
+import os
 import time
 import math
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-import pandas as pd
 import seaborn as sns
 import sklearn.metrics as metrics
 import torch
 import torch.nn as nn
 import torch.optim as optim
 
-sys.path.append(r"C:/Program Files (zk)/PythonFiles/AClassification/Heart-Sound-Diagnosis/")
+sys.path.append('../')
+sys.path.append('C:/Program Files (zk)/PythonFiles/AClassification/Heart-Sound-Diagnosis/')
 from models.classifiers import LSTM_Attn_Classifier
-from readers import get_loaders
+from models.mobilefacenet import MobileFaceNet
+from datautils.PhysioNet2016Dataset import get_loaders
+
+device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+# cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
+# x = torch.randn(16, 1, 64, 128)  # (bs, length, dim)
+# cl_model = LSTM_Classifier(inp_size=87, hidden_size=128, n_classes=5).to(device)
+cl_model = MobileFaceNet(inp_c=1, input_dim=87, latent_size=(6, 8), num_class=2, inp=1).to(device)
+# cl_model = LSTM_Attn_Classifier(inp_size=87, hidden_size=128, n_classes=2,
+#                                 return_attn_weights=True, attn_type="dot").to(device)
 
 
 def train():
-    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
-    # cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
-    # x = torch.randn(16, 1, 64, 128)  # (bs, length, dim)
-    # cl_model = LSTM_Classifier(inp_size=87, hidden_size=128, n_classes=5).to(device)
-    cl_model = LSTM_Attn_Classifier(inp_size=87, hidden_size=128, n_classes=5,
-                                    return_attn_weights=True, attn_type="dot").to(device)
     train_loader, test_loader = get_loaders()
     class_loss = nn.CrossEntropyLoss().to(device)
     iter_max = 1000
@@ -43,15 +47,17 @@ def train():
     # scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=5e-5)
     scheduler = optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda0)
     datetimestr = time.strftime("%Y%m%d%H%M", time.localtime())
-    setting_content = "LSTM+DotAttn, adam LambdaLR 0 ~ 5e-4 ~ 5e-5."
-    run_save_dir = "./ckpt/data1k/" + datetimestr + f'_/'
+    setting_content = "MobileFaceNet(inp_c=1, input_dim=87, latent_size=(6, 8), num_class=2, inp=1),\n"
+    setting_content += "adam LambdaLR 0 ~ 5e-4 ~ 5e-5,"
+    run_save_dir = "./ckpt/physionet/" + datetimestr + f'_/'
+
+    # In[6]:
 
     old = 0
     STD_acc = []
     STD_loss = []
     loss_line = []
     lr_list = []
-
     for epoch_id in tqdm(range(iter_max), desc="Train"):
         cl_model.train()
         loss_list = []
@@ -61,16 +67,19 @@ def train():
             # return
             optimizer.zero_grad()
             X_mel = X_mel.to(device)
+            if epoch_id == 0:
+                print(X_mel.shape)
             if X_mel.ndim == 3:
-                # X_mel = X_mel.unsqueeze(1)
                 X_mel = X_mel.transpose(1, 2)
+                X_mel = X_mel.unsqueeze(1)
             y_mel = y_mel.to(device)
-            print(X_mel.shape)
-            return
-            pred, _ = cl_model(X_mel)
-            # if idx == 0:
-            #     # torch.Size([32, 1, 87, 128]) torch.Size([32]) torch.Size([32, 5])
-            #     print(X_mel.shape, y_mel.shape, pred.shape)
+            # print(y_mel)
+            if epoch_id == 0:
+                print(X_mel.shape)
+            pred, _ = cl_model(x=X_mel, label=y_mel)
+            if epoch_id == 0:
+                # torch.Size([32, 1, 87, 128]) torch.Size([32]) torch.Size([32, 5])
+                print(X_mel.shape, y_mel.shape, pred.shape)
             loss_v = class_loss(pred, y_mel)
             loss_v.backward()
             loss_list.append(loss_v.item())
@@ -83,11 +92,11 @@ def train():
             for idx, (X_mel, y_mel) in enumerate(test_loader):
                 X_mel = X_mel.to(device)
                 if X_mel.ndim == 3:
-                    # X_mel = X_mel.unsqueeze(1)
                     X_mel = X_mel.transpose(1, 2)
+                    X_mel = X_mel.unsqueeze(1)
                 y_mel = y_mel.to(device)
                 # print(X_mel.shape)
-                pred, _ = cl_model(X_mel)
+                pred, _ = cl_model(x=X_mel, label=y_mel)
                 loss_eval = class_loss(pred, y_mel)
                 # print(y_mel.argmax(-1))
                 # print(pred.argmax(-1))
@@ -102,7 +111,7 @@ def train():
             if acc_per > old:
                 old = acc_per
                 print("new acc:", acc_per)
-                if acc_per > 0.85:
+                if acc_per > 0.65:
                     print(f"Epoch[{epoch_id}]: {acc_per}")
                     if not os.path.exists(run_save_dir):
                         os.makedirs(run_save_dir, exist_ok=True)
@@ -132,29 +141,27 @@ def train():
 def heatmap_eval():
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     # cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
-    cl_model = LSTM_Attn_Classifier(inp_size=87, hidden_size=128, n_classes=5,
-                                    return_attn_weights=True, attn_type="dot").to(device)
-    cl_model.load_state_dict(torch.load(f"./ckpt/data1k/202406120951_LSTMDotAtten/cls_model_60.pt"))
+    cl_model.load_state_dict(torch.load(f"./ckpt/physionet/202407151521_/cls_model_509.pt"))
     test_loader = get_loaders(eval=True)
     ypred_eval = None
     ytrue_eval = None
     acc_list = []
     cl_model.eval()
     with torch.no_grad():
-        for jdx, (x_img, y_label) in enumerate(test_loader):
+        for jdx, (x_img, y_mel) in enumerate(test_loader):
             X_mel = x_img.to(device)
-            # if X_mel.ndim == 3:
-                # X_mel = X_mel.unsqueeze(1)
-                # X_mel = X_mel.transpose(1, 2)
-            y_mel = y_label.to(device)
+            if X_mel.ndim == 3:
+                X_mel = X_mel.transpose(1, 2)
+                X_mel = X_mel.unsqueeze(1)
+            y_mel = y_mel.to(device)
             print(X_mel.shape)
-            pred, _ = cl_model(X_mel)
+            pred, _ = cl_model(x=X_mel, label=y_mel)
             # print(y_label.shape, pred.shape)
             if jdx == 0:
-                ytrue_eval = y_label
+                ytrue_eval = y_mel
                 ypred_eval = pred
             else:
-                ytrue_eval = torch.concat((ytrue_eval, y_label), dim=0)
+                ytrue_eval = torch.concat((ytrue_eval, y_mel), dim=0)
                 ypred_eval = torch.concat((ypred_eval, pred), dim=0)
             acc_batch = metrics.accuracy_score(y_mel.data.cpu().numpy(),
                                                pred.argmax(-1).data.cpu().numpy())
@@ -171,22 +178,8 @@ def heatmap_eval():
     conf_mat = metrics.confusion_matrix(max_arg, ytrue_eval)
     print(conf_mat)
     # # conf_mat = conf_mat / conf_mat.sum(axis=1)
-    # ab2full = ["A Normal \nHeart Sound", "Aortic\nStenosis", "Mitral\nRegurgitation", "Mitral\nStrnosis", "Murmur\nin Systole"]
-    # df_cm = pd.DataFrame(conf_mat, index=ab2full, columns=ab2full)
-    # # heatmap = sns.heatmap(df_cm, annot=True, fmt='d', cmap='YlGnBu')  # , cbar_kws={'format': '%.2f%'})
-    # heatmap = sns.heatmap(df_cm, annot=True, fmt='d', cmap='Blues')  # , cbar_kws={'format': '%.2f%'})
-    # # heatmap = sns.heatmap(df_cm, annot=True, fmt='.2f', cmap='Blues')  # , cbar_kws={'format': '%.2f%'})
-    # heatmap.yaxis.set_ticklabels(heatmap.yaxis.get_ticklabels(), rotation=45, ha='right')
-    # heatmap.xaxis.set_ticklabels(heatmap.xaxis.get_ticklabels(), rotation=45, ha='right')
-    # plt.xlabel("Predict Label")
-    # plt.ylabel("True Label")
-    # # plt.savefig(savepath)
-    # plt.show()
-
-def bicls():
-    conf_mat = np.array([[20, 1], [0, 79]])
-    conf_mat = conf_mat / conf_mat.sum(axis=1)
     ab2full = ["Normal \nHeart Sound", "Abnormal\nHeart Sound"]
+    # ab2full = ["A Normal \nHeart Sound", "Aortic\nStenosis", "Mitral\nRegurgitation", "Mitral\nStrnosis", "Murmur\nin Systole"]
     df_cm = pd.DataFrame(conf_mat, index=ab2full, columns=ab2full)
     # heatmap = sns.heatmap(df_cm, annot=True, fmt='d', cmap='YlGnBu')  # , cbar_kws={'format': '%.2f%'})
     # heatmap = sns.heatmap(df_cm, annot=True, fmt='d', cmap='Blues')  # , cbar_kws={'format': '%.2f%'})
@@ -198,7 +191,7 @@ def bicls():
     # plt.savefig(savepath)
     plt.show()
 
+
 if __name__ == '__main__':
     # train()
-    # heatmap_eval()
-    bicls()
+    heatmap_eval()

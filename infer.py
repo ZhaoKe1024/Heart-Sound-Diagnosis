@@ -39,7 +39,9 @@ def test_one():
     w2m, cl_model, device = pretrain_setting()
     print(cl_model)
     for input_path in wav_paths:
+        print(input_path)
         X_mel = w2m(read_wav_mel(input_path))
+        print("shape of X_mel:", X_mel.shape)  # torch.Size([128, 87])
         with torch.no_grad():
             X_mel = X_mel.unsqueeze(0).to(device)  # (87, 128)
 
@@ -61,7 +63,7 @@ def test_command(input_path):
     X_mel = w2m(read_wav_mel(input_path))
     with torch.no_grad():
         X_mel = X_mel.unsqueeze(0).to(device)  # (87, 128)
-
+        print("shape of X_mel:", X_mel.shape)  # torch.Size([128, 87])
         pred, _ = cl_model(X_mel)
         print(f"The prediction of {input_path.split('/')[-1]} is {l2m[pred.argmax(-1).item()]}")
 

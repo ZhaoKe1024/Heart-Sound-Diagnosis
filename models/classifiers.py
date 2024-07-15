@@ -78,12 +78,14 @@ def test_lstm():
     # input_size: 时间步
     # hidden_size:
     # num_layer: 层数
-    x = torch.randn(16, 1, 64, 128)  # (bs, length, dim)
-    lstm1 = LSTM_Classifier(inp_size=64, hidden_size=128, n_classes=2)
-    lstm2 = LSTM_Attn_Classifier(inp_size=64, hidden_size=128, n_classes=2,
-                                 return_attn_weights=False, attn_type="soft")
-    print(lstm1(x).shape)
-    print(lstm2(x).shape)
+    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+    print(device)
+    x = torch.randn(16, 87, 128, device=device)  # (bs, length, dim)
+    # lstm1 = LSTM_Classifier(inp_size=64, hidden_size=128, n_classes=2)
+    lstm2 = LSTM_Attn_Classifier(inp_size=87, hidden_size=128, n_classes=2,
+                                 return_attn_weights=False, attn_type="soft").to(device)
+    # print(lstm1(x).shape)
+    print(lstm2(x.transpose(1,2)).shape)
 
 
 if __name__ == '__main__':

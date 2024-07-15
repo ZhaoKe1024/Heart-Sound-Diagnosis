@@ -122,3 +122,19 @@ class MobileFaceNet(nn.Module):
         # print(out.shape, label.shape)
         out = self.cls(out, label)
         return out, feature
+
+
+if __name__ == '__main__':
+    import torch
+    device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
+    cl_model = MobileFaceNet(inp_c=1, input_dim=87, latent_size=(6, 8), num_class=2, inp=1).to(device)
+    x = torch.randn(16, 1, 87, 128, device=device)  # (bs, length, dim)
+    label = torch.randint(low=0, high=2, size=(16,), device=device)
+    # cl_model = LSTM_Classifier(inp_size=87, hidden_size=128, n_classes=5).to(device)
+    # cl_model = LSTM_Attn_Classifier(inp_size=87, hidden_size=128, n_classes=2,
+    #                                 return_attn_weights=True, attn_type="dot").to(device)
+    tmp_pred, tmp_feat = cl_model(x, label)
+    class_loss = nn.CrossEntropyLoss().to(device)
+    loss_v = class_loss(tmp_pred, label)
+    loss_v.backward()
+    print(tmp_pred.shape, tmp_feat.shape)

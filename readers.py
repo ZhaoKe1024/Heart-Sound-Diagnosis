@@ -31,7 +31,8 @@ def get_wave_label_list(iseval):
                 train_data_list.append(w2m(read_wav_mel(item + rname)))
                 train_label_list.append(label)
             else:
-                valid_data_list.append(w2m(read_wav_mel(item + rname)))
+                y = read_wav_mel(item + rname)
+                valid_data_list.append(w2m(y))
                 valid_label_list.append(label)
             # print(ind, fname, label)
             # ind += 1
@@ -82,6 +83,6 @@ def get_loaders(eval=False, bs=16):
 
 
 if __name__ == '__main__':
-    # get_wave_label_list()
+    get_wave_label_list(iseval=True)
     # show_data_demo()
-    get_loaders()
+    # get_loaders()

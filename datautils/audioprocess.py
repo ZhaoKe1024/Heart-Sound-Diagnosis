@@ -12,6 +12,7 @@ import torchaudio
 
 def read_wav_mel(wavpath: str, length: int = 44100):
     sig, sr = librosa.load(path=wavpath)
+    # print(sr)
     if len(sig) > length:
         st = (len(sig) - length) // 2
         sig = sig[st:st + length]
