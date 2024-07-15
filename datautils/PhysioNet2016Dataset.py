@@ -14,6 +14,32 @@ DATA_ROOT = "F:/DATAS/heartsounds/classification-of-heart-sound-recordings-the-p
 
 train_dir = ["training-a", "training-b", "training-c", "training-d", "training-e", "training-f"]
 valid_dir = ["validation"]
+attris = ["2nd left intercostal space",
+          "2nd right intercostal space",
+          "Apex when sit",
+          "Apex when squat",
+          "Carotid",
+          "Left of apex",
+          "Left of parasternum",
+          "Parasternum when sit",
+          "Parasternum when squat",
+          "Superior of apex",
+          "Superior of Parasternum"]
+attri2label = dict()
+for ind, att in enumerate(attris):
+    attri2label[att] = ind
+
+
+def create_attri_file_list():
+    output_list = open(f"../datasets/physionet_trainattrilist.txt", 'w')
+    df = pd.read_csv(DATA_ROOT + "annotations/Online Appendix_training set.csv", header=0, index_col=None,
+                     usecols=[0, 1, 4, 17])
+    print(df.head())
+    for row in df.itertuples():
+        if str(row[4]) != "nan":
+            output_list.write('{}.wav,{},{}\n'.format(row[2]+'/'+row[1], row[3], attri2label[row[4].strip()]))
+            print(row[1], row[2], row[3], row[4])
+    output_list.close()
 
 
 def create_file_list(mode="train"):
@@ -95,5 +121,6 @@ def get_loaders(eval=False, bs=32):
 
 
 if __name__ == '__main__':
-    get_loaders()
+    create_attri_file_list()
+    # get_loaders()
     # create_file_list("validation")
