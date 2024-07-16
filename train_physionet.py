@@ -152,7 +152,10 @@ def train():
             y_mel = y_mel.to(device)
             pred, feat = cl_model(x=X_mel, label=y_mel)
             embed = embedding_layer(y_mel.to(torch.long))
-            loss_a = class_loss(pred, y_mel) + bed_dis(feat[:, -3:], embed)
+            embed = torch.concat((feat[:, :-3], embed), dim=-1)
+            if epoch_id == 0 and idx == 0:
+                print(embed.shape)
+            loss_a = class_loss(pred, y_mel) + bed_dis(feat, embed)
             loss_a.backward()
             attri_loss_list_tmp.append(loss_a.item())
             optimizer.step()
@@ -206,7 +209,7 @@ def train():
                     plt.plot(lr_list)
                     if not os.path.exists(run_save_dir):
                         os.makedirs(run_save_dir, exist_ok=True)
-                        plt.savefig(run_save_dir + "train_result.png", format="png", dpi=300)
+                    plt.savefig(run_save_dir + f"train_result_{epoch_id}.png", format="png", dpi=300)
                     plt.close()
         scheduler.step()
 
@@ -230,7 +233,7 @@ def train():
 def heatmap_eval():
     device = torch.device("cuda") if torch.cuda.is_available() else "cpu"
     # cl_model = MobileNetV2(dc=1, n_class=5, input_size=288, width_mult=1).to(device)
-    cl_model.load_state_dict(torch.load(f"./ckpt/physionet/202407151521_/cls_model_509.pt"))
+    cl_model.load_state_dict(torch.load(f"./ckpt/physionet/202407160841_/cls_model_780.pt"))
     test_loader = get_loaders(eval=True)
     ypred_eval = None
     ytrue_eval = None
@@ -264,9 +267,12 @@ def heatmap_eval():
     # def get_heat_map(pred_matrix, label_vec, savepath):
     savepath = "./ckpt/data1k/202406120951_LSTMDotAtten/result_hm.png"
     max_arg = list(ypred_eval)
+    print(metrics.precision_score(max_arg, ytrue_eval))
+    print(metrics.recall_score(max_arg, ytrue_eval))
+    print(metrics.f1_score(max_arg, ytrue_eval))
     conf_mat = metrics.confusion_matrix(max_arg, ytrue_eval)
     print(conf_mat)
-    # # conf_mat = conf_mat / conf_mat.sum(axis=1)
+    conf_mat = conf_mat / conf_mat.sum(axis=1)
     ab2full = ["Normal \nHeart Sound", "Abnormal\nHeart Sound"]
     # ab2full = ["A Normal \nHeart Sound", "Aortic\nStenosis", "Mitral\nRegurgitation", "Mitral\nStrnosis", "Murmur\nin Systole"]
     df_cm = pd.DataFrame(conf_mat, index=ab2full, columns=ab2full)
@@ -282,5 +288,5 @@ def heatmap_eval():
 
 
 if __name__ == '__main__':
-    train()
-    # heatmap_eval()
+    # train()
+    heatmap_eval()
